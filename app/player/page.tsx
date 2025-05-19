@@ -2,7 +2,7 @@ import { Header } from "@/components/header"
 import { VideoPlayer } from "@/components/video-player"
 import { Suspense } from "react"
 
-export default function PlayerPage({
+export default async function PlayerPage({
   searchParams,
 }: {
   searchParams: { token?: string; username?: string }
