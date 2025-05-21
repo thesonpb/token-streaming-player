@@ -33,7 +33,14 @@ interface CheckTokenPayload {
   request_path: string;
 }
 
-export async function checkToken(payload: CheckTokenPayload): Promise<boolean> {
+// Define a new interface for the return type
+export interface TokenCheckResult {
+  isValid: boolean;
+  message: string; // We'll always include a message now
+  // status?: number; // Optionally include the status code from the JSON body
+}
+
+export async function checkToken(payload: CheckTokenPayload): Promise<TokenCheckResult> {
   try {
     console.log("Sending to /CheckToken:", JSON.stringify(payload, null, 2));
     const response = await fetch(`${API_BASE_URL}/CheckToken`, {
@@ -44,60 +51,54 @@ export async function checkToken(payload: CheckTokenPayload): Promise<boolean> {
       body: JSON.stringify(payload),
     });
 
-    let responseText = "";
+    const responseText = await response.text(); // Read text first to ensure we can log it
+
+    // Try to parse the response as JSON in any case to get the message
+    let responseData: { status?: number | string; message?: string } = {};
     try {
-      responseText = await response.text(); // Read text first
-    } catch (textError) {
-      console.warn("Could not read response text:", textError);
-
-      if (!response.ok) return false;
-
-      throw new Error(
-        "Failed to read response text even though response.ok was true."
-      );
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      // If JSON parsing fails, we'll construct a message based on HTTP status
+      console.warn("Could not parse response text as JSON:", responseText);
     }
 
+    const apiMessage = responseData.message || response.statusText || "An unknown error occurred";
+
     if (!response.ok) {
+      // HTTP status indicates an error (e.g., 401, 403, 500)
       console.log(
         `Token check failed: HTTP status ${response.status}. Body: ${responseText}`
       );
-
-      try {
-        const errorData = JSON.parse(responseText);
-        console.log("Error data from non-OK response:", errorData);
-      } catch (e) {
-        /* Silently ignore if not JSON */
-      }
-      return false;
+      return {
+        isValid: false,
+        message: `Server Error: ${response.status}. ${apiMessage}`,
+      };
     }
 
-    const data = JSON.parse(responseText);
-    console.log("Parsed response data (from HTTP 200):", data);
+    // Response.ok is true (HTTP 2xx), now check the internal status from JSON body
+    const internalStatus = responseData.status ? parseInt(String(responseData.status), 10) : 0;
 
-    if (data && (data.status === 403 || data.status === "403")) {
+    if (internalStatus === 200) {
+      console.log("Token check successful (HTTP 200, internal status 200):", responseData);
+      return { isValid: true, message: apiMessage }; // e.g., "oke"
+    } else {
+      // HTTP 200, but internal status indicates an issue (e.g., internal status 403)
       console.log(
-        `Token is banned per response body: ${data.message || "No message"}`
+        `Token check denied by API logic (HTTP 200, internal status ${internalStatus}):`,
+        responseData
       );
-      return false;
+      return { isValid: false, message: apiMessage }; // e.g., "Token is banned"
     }
 
-    return true;
   } catch (error) {
-    console.error("Error in checkToken function:", error);
-    return false;
+    console.error("Error in checkToken function (network or client-side):", error);
+    let errorMessage = "Network error or client-side issue during token check.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    return {
+      isValid: false,
+      message: errorMessage,
+    };
   }
 }
-
-// Example of how you might call it in your component:
-// const currentToken = "your_actual_token"; // from state or props
-// const videoPath = "/bad.mp4"; // or current video src
-// const claim = "access-video";
-
-// const isValid = await checkToken({
-//   token: currentToken,
-//   token_claim: claim,
-//   request_useragent: navigator.userAgent,
-//   request_ip: "CLIENT_ATTEMPT", // Server should ideally derive this. Consult API docs.
-//   request_hostname: window.location.hostname, // Or the specific hostname for the resource
-//   request_path: videoPath,
-// });
