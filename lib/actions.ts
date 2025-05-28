@@ -1,6 +1,4 @@
-import { AUTH } from "@/constants";
-
-const API_BASE_URL = "http://localhost:9926";
+import { API_BASE_URL, AUTH } from "@/constants";
 
 export async function joinSession(username: string): Promise<string> {
     try {

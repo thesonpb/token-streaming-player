@@ -11,9 +11,10 @@ import { checkToken, TokenCheckResult } from "@/lib/actions";
 interface VideoPlayerProps {
     token: string;
     username: string;
+    ip: string;
 }
 
-export function VideoPlayer({ token, username }: VideoPlayerProps) {
+export function VideoPlayer({ token, username, ip }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -40,11 +41,6 @@ export function VideoPlayer({ token, username }: VideoPlayerProps) {
         }
     }, [token]);
 
-    const generateRandomIp = (): string => {
-        const octet = () => Math.floor(Math.random() * 256);
-        return `${octet()}.${octet()}.${octet()}.${octet()}`;
-    };
-
     useEffect(() => {
         if (!token) {
             setIsTokenValid(false);
@@ -56,7 +52,6 @@ export function VideoPlayer({ token, username }: VideoPlayerProps) {
         }
 
         let isActive = true;
-        const simulatedIpForThisSession = generateRandomIp();
 
         const checkTokenValidity = async () => {
             let videoPath = "/gtv-videos-bucket/sample/BigBuckBunny.mp4";
@@ -65,7 +60,7 @@ export function VideoPlayer({ token, username }: VideoPlayerProps) {
                 token: token,
                 token_claim: "access-video",
                 request_useragent: navigator.userAgent,
-                request_ip: simulatedIpForThisSession,
+                request_ip: !username ? ip : "1.52.0.3",
                 request_hostname: window.location.hostname,
                 request_path: videoPath,
             };
@@ -111,7 +106,7 @@ export function VideoPlayer({ token, username }: VideoPlayerProps) {
             isActive = false;
             clearInterval(intervalId);
         };
-    }, [token, username]); // Added username to dependencies as it affects userMode which might be related
+    }, [token, username, ip]); // Added username to dependencies as it affects userMode which might be related
 
     // Video event handlers
     const handlePlay = async () => {
@@ -166,14 +161,6 @@ export function VideoPlayer({ token, username }: VideoPlayerProps) {
 
     return (
         <div className="w-full max-w-4xl mx-auto">
-            {apiResponseMessage && (
-                <div
-                    className={`p-3 mb-2 rounded-md text-sm flex items-center`}
-                >
-                    <span>You are watching in location ... with IP: </span>
-                </div>
-            )}
-
             <Card className="w-full bg-gray-900 border-gray-800 overflow-hidden relative">
                 <CardContent className="p-0">
                     <div className="relative">
