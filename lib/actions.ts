@@ -49,16 +49,11 @@ export async function checkToken(
             "Sending to /CheckToken:",
             JSON.stringify(payload, null, 2)
         );
-        const HARPER_DB_USERNAME = "HDB_ADMIN";
-        const HARPER_DB_PASSWORD = "son123456";
-        const auth = Buffer.from(
-            `${HARPER_DB_USERNAME}:${HARPER_DB_PASSWORD}`
-        ).toString("base64");
         const response = await fetch(`${API_BASE_URL}/CheckToken`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Basic ${auth}`,
+                Authorization: `Basic ${AUTH}`,
             },
             body: JSON.stringify(payload),
         });
